@@ -96,7 +96,8 @@ defmodule Indexer.Fetcher.Optimism.TxnBatch do
            {:reorg_monitor_started, !is_nil(Process.whereis(RollupL1ReorgMonitor))},
          {:rpc_l1_undefined, false} <- {:rpc_l1_undefined, is_nil(optimism_l1_rpc)},
          json_rpc_named_arguments = Optimism.json_rpc_named_arguments(optimism_l1_rpc),
-         {start_block_l1, batch_inbox, batch_submitter} = read_system_config(system_config, json_rpc_named_arguments),
+         {:system_config_read, {start_block_l1, batch_inbox, batch_submitter}} <-
+           {:system_config_read, read_system_config(system_config, json_rpc_named_arguments)},
          {:batch_inbox_valid, true} <- {:batch_inbox_valid, Helper.address_correct?(batch_inbox)},
          {:batch_submitter_valid, true} <-
            {:batch_submitter_valid, Helper.address_correct?(batch_submitter)},
@@ -179,7 +180,7 @@ defmodule Indexer.Fetcher.Optimism.TxnBatch do
 
         {:stop, :normal, state}
 
-      nil ->
+      {:system_config_read, nil} ->
         Logger.error("Cannot read SystemConfig contract.")
         {:stop, :normal, state}
 
@@ -1265,7 +1266,15 @@ defmodule Indexer.Fetcher.Optimism.TxnBatch do
       |> Enum.uniq()
       |> Enum.filter(fn id -> id > 0 end)
 
-    Repo.delete_all(from(fs in FrameSequence, where: fs.id in ^ids))
+    try do
+      Repo.delete_all(from(fs in FrameSequence, where: fs.id in ^ids))
+    rescue
+      # we need to ignore `foreign_key_violation` exception when deleting the rows
+      # because there can be a case when the chain partially replaces the frame sequence
+      # (e.g. Unichain Private Testnet), and so some rows in `op_transaction_batches` table
+      # can still reference to the `op_frame_sequences` table
+      _ -> nil
+    end
   end
 
   defp set_frame_sequences_view_ready(sequences) do

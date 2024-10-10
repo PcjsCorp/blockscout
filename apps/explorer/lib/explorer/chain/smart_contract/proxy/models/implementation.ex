@@ -17,7 +17,6 @@ defmodule Explorer.Chain.SmartContract.Proxy.Models.Implementation do
 
   alias Explorer.Chain.{Address, Hash, SmartContract}
   alias Explorer.Chain.SmartContract.Proxy
-  alias Explorer.Chain.SmartContract.Proxy.Models.Implementation
   alias Explorer.Counters.AverageBlockTime
   alias Explorer.Repo
   alias Timex.Duration
@@ -92,9 +91,19 @@ defmodule Explorer.Chain.SmartContract.Proxy.Models.Implementation do
   end
 
   @doc """
+  Returns all implementations for the given smart-contract address hashes
+  """
+  @spec get_proxy_implementations_for_multiple_proxies([Hash.Address.t()], Keyword.t()) :: __MODULE__.t() | nil
+  def get_proxy_implementations_for_multiple_proxies(proxy_address_hashes, options \\ []) do
+    proxy_address_hashes
+    |> get_proxy_implementations_by_multiple_hashes_query()
+    |> select_repo(options).all()
+  end
+
+  @doc """
   Returns the last implementation updated_at for the given smart-contract address hash
   """
-  @spec get_proxy_implementation_updated_at(Hash.Address.t() | nil, Keyword.t()) :: DateTime.t()
+  @spec get_proxy_implementation_updated_at(Hash.Address.t() | nil, Keyword.t()) :: DateTime.t() | nil
   def get_proxy_implementation_updated_at(proxy_address_hash, options) do
     proxy_address_hash
     |> get_proxy_implementations_query()
@@ -106,6 +115,13 @@ defmodule Explorer.Chain.SmartContract.Proxy.Models.Implementation do
     from(
       p in __MODULE__,
       where: p.proxy_address_hash == ^proxy_address_hash
+    )
+  end
+
+  defp get_proxy_implementations_by_multiple_hashes_query(proxy_address_hashes) do
+    from(
+      p in __MODULE__,
+      where: p.proxy_address_hash in ^proxy_address_hashes
     )
   end
 
@@ -140,9 +156,20 @@ defmodule Explorer.Chain.SmartContract.Proxy.Models.Implementation do
 
     {updated_smart_contract, implementation_address_fetched?} =
       if check_implementation_refetch_necessity(implementation_updated_at) do
-        SmartContract.address_hash_to_smart_contract_with_bytecode_twin(address_hash, options)
+        {smart_contract_with_bytecode_twin, implementation_address_fetched?} =
+          SmartContract.address_hash_to_smart_contract_with_bytecode_twin(address_hash, options)
+
+        if smart_contract_with_bytecode_twin do
+          {smart_contract_with_bytecode_twin, implementation_address_fetched?}
+        else
+          {smart_contract, implementation_address_fetched?}
+        end
       else
-        {smart_contract, false}
+        if implementation_updated_at do
+          {smart_contract, true}
+        else
+          {smart_contract, false}
+        end
       end
 
     get_implementation(
@@ -199,7 +226,7 @@ defmodule Explorer.Chain.SmartContract.Proxy.Models.Implementation do
         {:ok, :error} ->
           format_proxy_implementations_response(proxy_implementations)
 
-        {:ok, %Implementation{} = result} ->
+        {:ok, %__MODULE__{} = result} ->
           format_proxy_implementations_response(result)
 
         _ ->
@@ -278,7 +305,7 @@ defmodule Explorer.Chain.SmartContract.Proxy.Models.Implementation do
   Saves proxy's implementation into the DB
   """
   @spec save_implementation_data([String.t()], Hash.Address.t(), atom() | nil, Keyword.t()) ::
-          Implementation.t() | :empty | :error
+          __MODULE__.t() | :empty | :error
   def save_implementation_data(:error, _proxy_address_hash, _proxy_type, _options) do
     :error
   end

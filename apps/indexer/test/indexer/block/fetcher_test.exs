@@ -49,7 +49,11 @@ defmodule Indexer.Block.FetcherTest do
 
   describe "import_range/2" do
     setup %{json_rpc_named_arguments: json_rpc_named_arguments} do
-      CoinBalanceCatchup.Supervisor.Case.start_supervised!(json_rpc_named_arguments: json_rpc_named_arguments)
+      CoinBalanceCatchup.Supervisor.Case.start_supervised!(
+        json_rpc_named_arguments: json_rpc_named_arguments,
+        poll: false
+      )
+
       ContractCode.Supervisor.Case.start_supervised!(json_rpc_named_arguments: json_rpc_named_arguments)
       InternalTransaction.Supervisor.Case.start_supervised!(json_rpc_named_arguments: json_rpc_named_arguments)
       Token.Supervisor.Case.start_supervised!(json_rpc_named_arguments: json_rpc_named_arguments)
@@ -274,6 +278,8 @@ defmodule Indexer.Block.FetcherTest do
       block_fetcher: %Fetcher{json_rpc_named_arguments: json_rpc_named_arguments} = block_fetcher
     } do
       block_number = @first_full_block_number
+
+      Indexer.Fetcher.Filecoin.AddressInfo.Supervisor.Case.start_supervised!()
 
       if json_rpc_named_arguments[:transport] == EthereumJSONRPC.Mox do
         case Keyword.fetch!(json_rpc_named_arguments, :variant) do
@@ -681,6 +687,8 @@ defmodule Indexer.Block.FetcherTest do
       block_fetcher: %Fetcher{json_rpc_named_arguments: json_rpc_named_arguments} = block_fetcher
     } do
       block_number = 7_374_455
+
+      Indexer.Fetcher.Filecoin.AddressInfo.Supervisor.Case.start_supervised!()
 
       if json_rpc_named_arguments[:transport] == EthereumJSONRPC.Mox do
         EthereumJSONRPC.Mox

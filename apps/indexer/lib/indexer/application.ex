@@ -12,13 +12,9 @@ defmodule Indexer.Application do
   alias Indexer.Fetcher.OnDemand.TokenTotalSupply, as: TokenTotalSupplyOnDemand
 
   alias Indexer.Memory
-  alias Indexer.Prometheus.PendingBlockOperationsCollector
-  alias Prometheus.Registry
 
   @impl Application
   def start(_type, _args) do
-    Registry.register_collector(PendingBlockOperationsCollector)
-
     memory_monitor_options =
       case Application.get_env(:indexer, :memory_limit) do
         nil -> %{}

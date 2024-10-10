@@ -1,9 +1,40 @@
 # Changelog
 
+## 6.8.1
+
+### 🚀 Features
+
+- Add `INDEXER_OPTIMISM_L1_DEPOSITS_TRANSACTION_TYPE` env variable ([#10674](https://github.com/blockscout/blockscout/issues/10674))
+- Support for filecoin native addresses ([#10468](https://github.com/blockscout/blockscout/issues/10468))
+
+### 🐛 Bug Fixes
+
+- Decoding of zero fields in mud ([#10764](https://github.com/blockscout/blockscout/issues/10764))
+- Insert coin balances placeholders in internal transactions fetcher ([#10603](https://github.com/blockscout/blockscout/issues/10603))
+- Avoid key violation error in `Indexer.Fetcher.Optimism.TxnBatch` ([#10752](https://github.com/blockscout/blockscout/issues/10752))
+- Fix empty current token balances ([#10745](https://github.com/blockscout/blockscout/issues/10745))
+- Allow disabling group votes fetcher independently of epoch block fetcher ([#10673](https://github.com/blockscout/blockscout/issues/10673))
+- Fix gettext usage warning ([#10693](https://github.com/blockscout/blockscout/issues/10693))
+- Truncate token symbol in Explorer.Chain.PolygonZkevm.BridgeL1Token ([#10688](https://github.com/blockscout/blockscout/issues/10688))
+
+### ⚡ Performance
+
+- Improve performance of transactions list page ([#10734](https://github.com/blockscout/blockscout/issues/10734))
+
+### ⚙️ Miscellaneous Tasks
+
+- Add meta to migrations_status ([#10678](https://github.com/blockscout/blockscout/issues/10678))
+- Token balances fetcher slow queue ([#10694](https://github.com/blockscout/blockscout/issues/10694))
+- Shrink sample response for the trace in Filecoin chain type
+- Extend missing balanceOf function with :unable_to_decode error ([#10713](https://github.com/blockscout/blockscout/issues/10713))
+- Fix flaking explorer tests ([#10676](https://github.com/blockscout/blockscout/issues/10676))
+- Change shrink internal transactions migration default batch_size ([#10689](https://github.com/blockscout/blockscout/issues/10689))
+
 ## 6.8.0
 
 ### 🚀 Features
 
+- Detect Diamond proxy pattern on unverified proxy smart-contract ([#10665](https://github.com/blockscout/blockscout/pull/10665))
 - Support smart-contract verification in zkSync ([#10500](https://github.com/blockscout/blockscout/issues/10500))
 - Add icon for secondary coin ([#10241](https://github.com/blockscout/blockscout/issues/10241))
 - Integrate Cryptorank API ([#10550](https://github.com/blockscout/blockscout/issues/10550))
@@ -34,7 +65,6 @@
 - Logs list serialization ([#10565](https://github.com/blockscout/blockscout/issues/10565))
 - nil in OrderedCache ([#10647](https://github.com/blockscout/blockscout/pull/10647))
 - Fix for metadata detection at ipfs protocol([#10646](https://github.com/blockscout/blockscout/pull/10646))
-- Change default shrink internal_transactions table migration params ([#10644](https://github.com/blockscout/blockscout/pull/10644))
 - Fix bug in update_replaced_transactions query ([#10634](https://github.com/blockscout/blockscout/issues/10634))
 - Fix mode dependent processes starting ([#10641](https://github.com/blockscout/blockscout/issues/10641))
 - Better detection IPFS links in NFT metadata fetcher ([#10638](https://github.com/blockscout/blockscout/issues/10638))
@@ -128,7 +158,7 @@
 | `PUBLIC_METRICS_ENABLED`                                    | Variable to enable running queries at /public-metrics endpoint. Implemented in [#10469](https://github.com/blockscout/blockscout/pull/10469).                                                                                                                                                                                               | <p>Version: v6.8.0+<br>Default: false<br>Applications: API</p>                                                                                                          |
 | `PUBLIC_METRICS_UPDATE_PERIOD_HOURS`                                    | Public metrics update period in hours at /public-metrics endpoint. Implemented in [#10469](https://github.com/blockscout/blockscout/pull/10469).                                                                                                                                                                                               | <p>Version: v6.8.0+<br>Default: 24<br>Applications: API</p>                                                                                                          | 
 | `SHRINK_INTERNAL_TRANSACTIONS_ENABLED`                                    | Variable to enable internal transactions shrinking logic. Implemented in [#10567](https://github.com/blockscout/blockscout/pull/10567).                                                                                                                                                                                                                                                                                                            | <p>Version: v6.8.0+<br>Default: <code>false</code><br>Applications: API, Indexer</p>                                                                                     | 
-| `SHRINK_INTERNAL_TRANSACTIONS_BATCH_SIZE`                                    | Batch size of the shrink internal transactions migration. Implemented in [#10567](https://github.com/blockscout/blockscout/pull/10567).                                                                                                                                                                                                                                                                                                            | <p>Version: v6.8.0+<br>Default: 10000<br>Applications: API, Indexer</p>                                                                                                   | 
+| `SHRINK_INTERNAL_TRANSACTIONS_BATCH_SIZE`                                    | Batch size of the shrink internal transactions migration. Implemented in [#10567](https://github.com/blockscout/blockscout/pull/10567).                                                                                                                                                                                                                                                                                                            | <p>Version: v6.8.0+<br>Default: 1000<br>Applications: API, Indexer</p>                                                                                                   | 
 | `SHRINK_INTERNAL_TRANSACTIONS_CONCURRENCY`                                    | Concurrency of the shrink internal transactions migration. Implemented in [#10567](https://github.com/blockscout/blockscout/pull/10567).                                                                                                                                                                                                                                                                                                           | <p>Version: v6.8.0+<br>Default: 1<br>Applications: API, Indexer</p>                                                                                                      | 
 | `IPFS_PUBLIC_GATEWAY_URL`                                            | IPFS public gateway url which is used by frontend to display IPFS resources such as token instance image.                                                                                                                                                                                                                                                                                                                                                                                                                                   | <p>Version: v6.8.0+<br>Default: <code>https://ipfs.io/ipfs</code><br>Applications: API</p>                       |
 | `INDEXER_TOKEN_INSTANCE_RETRY_MAX_REFETCH_INTERVAL`           | Maximum interval between attempts to fetch token instance metadata. [Time format](backend-env-variables.md#time-format). Implemented in [#10027](https://github.com/blockscout/blockscout/pull/10027).                                                                                                                                                                                                                                                                                                                           | <p>Version: v6.8.0+<br>Default: <code>168h</code><br>Applications: Indexer</p>                                        |

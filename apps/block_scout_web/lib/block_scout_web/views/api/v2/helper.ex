@@ -84,12 +84,14 @@ defmodule BlockScoutWeb.API.V2.Helper do
       "hash" => Address.checksum(address),
       "is_contract" => smart_contract?,
       "name" => address_name(address),
+      "is_scam" => address_marked_as_scam?(address),
       "proxy_type" => proxy_type,
       "implementations" => Proxy.proxy_object_info(implementation_address_hashes, implementation_names),
       "is_verified" => verified?(address) || verified_minimal_proxy?(proxy_implementations),
       "ens_domain_name" => address.ens_domain_name,
       "metadata" => address.metadata
     }
+    |> address_chain_type_fields(address)
   end
 
   def address_with_info(%NotLoaded{}, address_hash) do
@@ -120,6 +122,19 @@ defmodule BlockScoutWeb.API.V2.Helper do
     }
   end
 
+  case Application.compile_env(:explorer, :chain_type) do
+    :filecoin ->
+      defp address_chain_type_fields(result, address) do
+        # credo:disable-for-next-line Credo.Check.Design.AliasUsage
+        BlockScoutWeb.API.V2.FilecoinView.extend_address_json_response(result, address)
+      end
+
+    _ ->
+      defp address_chain_type_fields(result, _address) do
+        result
+      end
+  end
+
   defp minimal_proxy_pattern?(proxy_implementations) do
     proxy_implementations.proxy_type == :eip1167
   end
@@ -143,6 +158,12 @@ defmodule BlockScoutWeb.API.V2.Helper do
   end
 
   def address_name(_), do: nil
+
+  def address_marked_as_scam?(%Address{scam_badge: scam_badge}) when not is_nil(scam_badge) do
+    true
+  end
+
+  def address_marked_as_scam?(_), do: false
 
   def verified?(%Address{smart_contract: nil}), do: false
   def verified?(%Address{smart_contract: %{metadata_from_verified_bytecode_twin: true}}), do: false

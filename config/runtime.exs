@@ -33,6 +33,7 @@ config :block_scout_web,
   permanent_light_mode_enabled: ConfigHelper.parse_bool_env_var("PERMANENT_LIGHT_MODE_ENABLED"),
   display_token_icons: ConfigHelper.parse_bool_env_var("DISPLAY_TOKEN_ICONS"),
   hide_block_miner: ConfigHelper.parse_bool_env_var("HIDE_BLOCK_MINER"),
+  hide_scam_addresses: ConfigHelper.parse_bool_env_var("HIDE_SCAM_ADDRESSES"),
   show_tenderly_link: ConfigHelper.parse_bool_env_var("SHOW_TENDERLY_LINK"),
   sensitive_endpoints_api_key: System.get_env("API_SENSITIVE_ENDPOINTS_KEY"),
   disable_api?: disable_api?
@@ -617,7 +618,7 @@ config :explorer, Explorer.Migrator.RestoreOmittedWETHTransfers,
 
 config :explorer, Explorer.Migrator.ShrinkInternalTransactions,
   enabled: ConfigHelper.parse_bool_env_var("SHRINK_INTERNAL_TRANSACTIONS_ENABLED"),
-  batch_size: ConfigHelper.parse_integer_env_var("SHRINK_INTERNAL_TRANSACTIONS_BATCH_SIZE", 10000),
+  batch_size: ConfigHelper.parse_integer_env_var("SHRINK_INTERNAL_TRANSACTIONS_BATCH_SIZE", 100),
   concurrency: ConfigHelper.parse_integer_env_var("SHRINK_INTERNAL_TRANSACTIONS_CONCURRENCY", 10)
 
 config :explorer, Explorer.Chain.BridgedToken,
@@ -637,6 +638,16 @@ config :explorer, Explorer.Chain.TokenTransfer,
 config :explorer, Explorer.Chain.Metrics,
   enabled: ConfigHelper.parse_bool_env_var("PUBLIC_METRICS_ENABLED", "false"),
   update_period_hours: ConfigHelper.parse_integer_env_var("PUBLIC_METRICS_UPDATE_PERIOD_HOURS", 24)
+
+config :explorer, Explorer.Chain.Filecoin.NativeAddress,
+  network_prefix: ConfigHelper.parse_catalog_value("FILECOIN_NETWORK_PREFIX", ["f", "t"], true, "f")
+
+config :explorer, Explorer.Migrator.FilecoinPendingAddressOperations,
+  enabled: ConfigHelper.chain_type() == :filecoin,
+  batch_size: ConfigHelper.parse_integer_env_var("FILECOIN_PENDING_ADDRESS_OPERATIONS_MIGRATION_BATCH_SIZE", 100),
+  concurrency: ConfigHelper.parse_integer_env_var("FILECOIN_PENDING_ADDRESS_OPERATIONS_MIGRATION_CONCURRENCY", 1)
+
+config :explorer, Explorer.Chain.Blackfort.Validator, api_url: System.get_env("BLACKFORT_VALIDATOR_API_URL")
 
 ###############
 ### Indexer ###
@@ -708,7 +719,9 @@ config :indexer, Indexer.Fetcher.Token, concurrency: ConfigHelper.parse_integer_
 
 config :indexer, Indexer.Fetcher.TokenBalance,
   batch_size: ConfigHelper.parse_integer_env_var("INDEXER_TOKEN_BALANCES_BATCH_SIZE", 100),
-  concurrency: ConfigHelper.parse_integer_env_var("INDEXER_TOKEN_BALANCES_CONCURRENCY", 10)
+  concurrency: ConfigHelper.parse_integer_env_var("INDEXER_TOKEN_BALANCES_CONCURRENCY", 10),
+  max_refetch_interval: ConfigHelper.parse_time_env_var("INDEXER_TOKEN_BALANCES_MAX_REFETCH_INTERVAL", "168h"),
+  exp_timeout_coeff: ConfigHelper.parse_integer_env_var("INDEXER_TOKEN_BALANCES_EXPONENTIAL_TIMEOUT_COEFF", 100)
 
 config :indexer, Indexer.Fetcher.OnDemand.TokenBalance,
   threshold: ConfigHelper.parse_time_env_var("TOKEN_BALANCE_ON_DEMAND_FETCHER_THRESHOLD", "1h"),
@@ -848,7 +861,9 @@ config :indexer, Indexer.Fetcher.Optimism,
   optimism_l1_rpc: System.get_env("INDEXER_OPTIMISM_L1_RPC"),
   optimism_l1_system_config: System.get_env("INDEXER_OPTIMISM_L1_SYSTEM_CONFIG_CONTRACT")
 
-config :indexer, Indexer.Fetcher.Optimism.Deposit, batch_size: System.get_env("INDEXER_OPTIMISM_L1_DEPOSITS_BATCH_SIZE")
+config :indexer, Indexer.Fetcher.Optimism.Deposit,
+  batch_size: System.get_env("INDEXER_OPTIMISM_L1_DEPOSITS_BATCH_SIZE"),
+  transaction_type: ConfigHelper.parse_integer_env_var("INDEXER_OPTIMISM_L1_DEPOSITS_TRANSACTION_TYPE", 126)
 
 config :indexer, Indexer.Fetcher.Optimism.OutputRoot,
   output_oracle: System.get_env("INDEXER_OPTIMISM_L1_OUTPUT_ORACLE_CONTRACT")
@@ -958,6 +973,9 @@ config :indexer, Indexer.Fetcher.Arbitrum.RollupMessagesCatchup,
 config :indexer, Indexer.Fetcher.Arbitrum.RollupMessagesCatchup.Supervisor,
   enabled: ConfigHelper.parse_bool_env_var("INDEXER_ARBITRUM_BRIDGE_MESSAGES_TRACKING_ENABLED")
 
+config :indexer, Indexer.Fetcher.Arbitrum.MessagesToL2Matcher.Supervisor,
+  disabled?: not ConfigHelper.parse_bool_env_var("INDEXER_ARBITRUM_BRIDGE_MESSAGES_TRACKING_ENABLED")
+
 config :indexer, Indexer.Fetcher.RootstockData.Supervisor,
   disabled?:
     ConfigHelper.chain_type() != :rsk || ConfigHelper.parse_bool_env_var("INDEXER_DISABLE_ROOTSTOCK_DATA_FETCHER")
@@ -1037,15 +1055,33 @@ config :indexer, Indexer.Fetcher.PolygonZkevm.TransactionBatch.Supervisor,
 config :indexer, Indexer.Fetcher.Celo.ValidatorGroupVotes,
   batch_size: ConfigHelper.parse_integer_env_var("INDEXER_CELO_VALIDATOR_GROUP_VOTES_BATCH_SIZE", 200_000)
 
+config :indexer, Indexer.Fetcher.Celo.ValidatorGroupVotes.Supervisor,
+  enabled:
+    ConfigHelper.chain_type() == :celo and
+      not ConfigHelper.parse_bool_env_var("INDEXER_DISABLE_CELO_VALIDATOR_GROUP_VOTES_FETCHER")
+
 celo_epoch_fetchers_enabled? =
   ConfigHelper.chain_type() == :celo and
     not ConfigHelper.parse_bool_env_var("INDEXER_DISABLE_CELO_EPOCH_FETCHER")
 
-config :indexer, Indexer.Fetcher.Celo.ValidatorGroupVotes.Supervisor, enabled: celo_epoch_fetchers_enabled?
-
 config :indexer, Indexer.Fetcher.Celo.EpochBlockOperations.Supervisor,
   enabled: celo_epoch_fetchers_enabled?,
   disabled?: not celo_epoch_fetchers_enabled?
+
+config :indexer, Indexer.Fetcher.Filecoin.BeryxAPI,
+  base_url: ConfigHelper.safe_get_env("BERYX_API_BASE_URL", "https://api.zondax.ch/fil/data/v3/mainnet"),
+  api_token: System.get_env("BERYX_API_TOKEN")
+
+filecoin_native_address_fetcher_enabled? =
+  ConfigHelper.chain_type() == :filecoin and
+    not ConfigHelper.parse_bool_env_var("INDEXER_DISABLE_FILECOIN_ADDRESS_INFO_FETCHER")
+
+config :indexer, Indexer.Fetcher.Filecoin.AddressInfo.Supervisor,
+  enabled: filecoin_native_address_fetcher_enabled?,
+  disabled?: not filecoin_native_address_fetcher_enabled?
+
+config :indexer, Indexer.Fetcher.Filecoin.AddressInfo,
+  concurrency: ConfigHelper.parse_integer_env_var("INDEXER_FILECOIN_ADDRESS_INFO_CONCURRENCY", 1)
 
 Code.require_file("#{config_env()}.exs", "config/runtime")
 
